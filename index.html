@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Customers</title>
+
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --panel:#121a26;
+      --panel2:#0f1724;
+      --text:#e8f0ff;
+      --muted:#8aa0b8;
+      --border:rgba(255,255,255,.10);
+      --shadow:0 12px 36px rgba(0,0,0,.35);
+      --accent:#7aa2ff;
+      --ok:#2de2a6;
+      --bad:#ff6b6b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(122,162,255,0.18), transparent 55%),
+        radial-gradient(1000px 800px at 90% 0%, rgba(45,226,166,0.10), transparent 60%),
+        var(--bg);
+    }
+    .app{
+      max-width: 720px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display:flex;
+      flex-direction:column;
+    }
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,15,23,0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar{
+      padding: 14px 14px 10px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .title{
+      font-weight: 800;
+      letter-spacing: .2px;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .sub{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    button{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+      transition: background .2s ease, border-color .2s ease, transform .05s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:hover{ background: rgba(255,255,255,0.07); border-color: rgba(122,162,255,0.35); }
+    button:active{ transform: translateY(1px); }
+    button.primary{ border-color: rgba(122,162,255,0.45); background: rgba(122,162,255,0.12); }
+    button.danger{ border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.10); }
+
+    .searchRow{
+      padding: 0 14px 12px 14px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    input[type="search"], input[type="text"], input[type="number"]{
+      width:100%;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      padding: 12px 12px;
+      border-radius: 12px;
+      outline:none;
+      font-size: 14px;
+    }
+    input::placeholder{ color: rgba(138,160,184,.75); }
+
+    main{
+      padding: 14px;
+      flex: 1;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .list{
+      display:flex;
+      flex-direction:column;
+    }
+    .rowItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .rowItem:last-child{ border-bottom: none; }
+    .rowItem:active{ background: rgba(255,255,255,0.03); }
+    .nameLine{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .nameLine .big{
+      font-weight: 850;
+      font-size: 15px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .nameLine .small{
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .chev{
+      color: rgba(232,240,255,.6);
+      font-size: 18px;
+      padding-left: 6px;
+      flex: 0 0 auto;
+    }
+
+    .hint{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+    .status{
+      font-size: 12px;
+      margin-top: 10px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .status.ok{ color: var(--ok); }
+    .status.bad{ color: var(--bad); }
+
+    /* Detail view */
+    .detailHd{
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+    }
+    .detailTitle{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .detailTitle .big{
+      font-size: 16px;
+      font-weight: 900;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .detailTitle .small{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .detailBody{
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .fieldLabel{
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .field{
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    textarea{
+      width:100%;
+      min-height: 220px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 14px;
+      outline:none;
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    /* Modal */
+    dialog{
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(18,26,38,0.92);
+      color: var(--text);
+      width: min(680px, 92vw);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop{ background: rgba(0,0,0,0.55); }
+    .dlgHd{
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+    }
+    .dlgHd .h{ font-weight: 900; }
+    .dlgBody{ padding: 14px; display:flex; flex-direction:column; gap: 12px; }
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 520px){
+      .grid2{ grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <!-- Supabase JS via CDN (no bundler) -->
+  <!-- Docs: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+  <!-- :contentReference[oaicite:2]{index=2} -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <div>
+          <div class="title" id="pageTitle">Customers</div>
+          <div class="sub" id="pageSub">Contacts-style view</div>
+        </div>
+        <div class="actions" id="listActions">
+          <button class="primary" id="addBtn">Add</button>
+        </div>
+        <div class="actions" id="detailActions" style="display:none;">
+          <button id="backBtn">Go back</button>
+          <button class="primary" id="editBtn">Edit</button>
+          <button class="primary" id="saveBtn" style="display:none;">Save</button>
+          <button id="cancelBtn" style="display:none;">Cancel</button>
+        </div>
+      </div>
+
+      <div class="searchRow" id="searchRow">
+        <input id="searchInput" type="search" placeholder="Search by name or surname…" autocomplete="off" />
+      </div>
+    </header>
+
+    <main>
+      <!-- LIST VIEW -->
+      <section id="listView" class="card">
+        <div class="list" id="list"></div>
+      </section>
+
+      <div class="hint" id="hint">
+        Tip: search is case-insensitive. Tap a customer to open the card. Notes auto-save.
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <!-- DETAIL VIEW -->
+      <section id="detailView" class="card" style="display:none; margin-top: 14px;">
+        <div class="detailHd">
+          <div class="detailTitle">
+            <div class="big" id="detailName">—</div>
+            <div class="small" id="detailMeta">—</div>
+          </div>
+        </div>
+
+        <div class="detailBody">
+          <div class="field">
+            <div class="fieldLabel">Name</div>
+            <input id="nameInput" type="text" placeholder="Name" disabled />
+          </div>
+
+          <div class="field">
+            <div class="fieldLabel">Surname</div>
+            <input id="surnameInput" type="text" placeholder="Surname" disabled />
+          </div>
+
+          <div class="field">
+            <div class="fieldLabel">Price</div>
+            <input id="priceInput" type="text" placeholder="Price" disabled />
+          </div>
+
+          <div class="field">
+            <div class="fieldLabel">Notes (auto-saves)</div>
+            <textarea id="notesInput" placeholder="Write notes…" ></textarea>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ADD MODAL -->
+  <dialog id="addDialog">
+    <div class="dlgHd">
+      <div class="h">Add customer</div>
+      <button id="closeAddBtn">Close</button>
+    </div>
+    <div class="dlgBody">
+      <div class="grid2">
+        <div>
+          <div class="fieldLabel">Name</div>
+          <input id="addName" type="text" placeholder="e.g. ΝΑΤΑΣΣΑ" />
+        </div>
+        <div>
+          <div class="fieldLabel">Surname</div>
+          <input id="addSurname" type="text" placeholder="e.g. ΑΒΡΑΜΙΔΟΥ" />
+        </div>
+      </div>
+      <div>
+        <div class="fieldLabel">Price</div>
+        <input id="addPrice" type="text" placeholder="e.g. 60 / 40" />
+      </div>
+      <div>
+        <div class="fieldLabel">Notes</div>
+        <textarea id="addNotes" placeholder="Optional notes…"></textarea>
+      </div>
+      <button class="primary" id="createBtn">Create</button>
+      <div class="status" id="addStatus"></div>
+    </div>
+  </dialog>
+
+  <script>
+    // ==========================
+    // CONFIG (EDIT THESE)
+    // ==========================
+    const SUPABASE_URL = "https://kbccjpoqzacnkafwlecn.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiY2NqcG9xemFjbmthZndsZWNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE3MDYsImV4cCI6MjA4NDk5NzcwNn0.m_rgwS10E_Mfsc22A1QZWU83H1B_mt-73R49b4XE4qI";
+    const TABLE_NAME = "customers"; // <-- put your exact table name
+
+    // Column names (must match your table)
+    const COL_ID = "id";
+    const COL_NAME = "name";
+    const COL_SURNAME = "surname";
+    const COL_PRICE = "price";
+    const COL_NOTES = "notes";
+
+    // ==========================
+    // CLIENT
+    // ==========================
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ==========================
+    // STATE
+    // ==========================
+    let current = null;       // current customer object
+    let currentOriginal = null;
+    let editMode = false;
+
+    // ==========================
+    // DOM
+    // ==========================
+    const $ = (id) => document.getElementById(id);
+
+    const statusEl = $("status");
+    const hintEl = $("hint");
+
+    const listView = $("listView");
+    const detailView = $("detailView");
+    const listEl = $("list");
+
+    const searchRow = $("searchRow");
+    const searchInput = $("searchInput");
+
+    const listActions = $("listActions");
+    const detailActions = $("detailActions");
+
+    const pageTitle = $("pageTitle");
+    const pageSub = $("pageSub");
+
+    const detailName = $("detailName");
+    const detailMeta = $("detailMeta");
+
+    const nameInput = $("nameInput");
+    const surnameInput = $("surnameInput");
+    const priceInput = $("priceInput");
+    const notesInput = $("notesInput");
+
+    const addDialog = $("addDialog");
+    const addBtn = $("addBtn");
+    const closeAddBtn = $("closeAddBtn");
+    const createBtn = $("createBtn");
+    const addStatus = $("addStatus");
+    const addName = $("addName");
+    const addSurname = $("addSurname");
+    const addPrice = $("addPrice");
+    const addNotes = $("addNotes");
+
+    const backBtn = $("backBtn");
+    const editBtn = $("editBtn");
+    const saveBtn = $("saveBtn");
+    const cancelBtn = $("cancelBtn");
+
+    // ==========================
+    // UTIL
+    // ==========================
+    function setStatus(msg, kind = "") {
+      statusEl.textContent = msg || "";
+      statusEl.className = "status " + (kind || "");
+    }
+
+    function setAddStatus(msg, kind = "") {
+      addStatus.textContent = msg || "";
+      addStatus.className = "status " + (kind || "");
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function clone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function setView(mode) {
+      if (mode === "list") {
+        listView.style.display = "";
+        detailView.style.display = "none";
+        searchRow.style.display = "";
+        listActions.style.display = "";
+        detailActions.style.display = "none";
+        hintEl.style.display = "";
+
+        pageTitle.textContent = "Customers";
+        pageSub.textContent = "Contacts-style view";
+        setStatus("");
+
+        current = null;
+        currentOriginal = null;
+        setEditMode(false);
+      } else {
+        listView.style.display = "none";
+        detailView.style.display = "";
+        searchRow.style.display = "none";
+        listActions.style.display = "none";
+        detailActions.style.display = "";
+        hintEl.style.display = "none";
+
+        pageTitle.textContent = "Customer";
+        pageSub.textContent = "Notes are editable immediately";
+      }
+    }
+
+    function setEditMode(on) {
+      editMode = !!on;
+
+      // Notes is ALWAYS editable
+      nameInput.disabled = !editMode;
+      surnameInput.disabled = !editMode;
+      priceInput.disabled = !editMode;
+
+      editBtn.style.display = editMode ? "none" : "";
+      saveBtn.style.display = editMode ? "" : "none";
+      cancelBtn.style.display = editMode ? "" : "none";
+    }
+
+    // Debounce helper
+    function debounce(fn, ms) {
+      let t = null;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    // ==========================
+    // DATA: LIST
+    // ==========================
+    async function loadList(query = "") {
+      setStatus("Loading…");
+
+      let q = sb.from(TABLE_NAME)
+        .select(`${COL_ID}, ${COL_NAME}, ${COL_SURNAME}`)
+        .order(COL_SURNAME, { ascending: true })
+        .order(COL_NAME, { ascending: true })
+        .limit(2000);
+
+      const term = query.trim();
+      if (term) {
+        // OR filter: name ILIKE or surname ILIKE
+        // PostgREST 'or' syntax
+        const safe = term.replaceAll(",", " "); // avoid breaking 'or' string
+        q = q.or(`${COL_NAME}.ilike.%${safe}%,${COL_SURNAME}.ilike.%${safe}%`);
+      }
+
+      const { data, error } = await q;
+
+      if (error) {
+        setStatus("Error loading list:\n" + error.message, "bad");
+        listEl.innerHTML = "";
+        return;
+      }
+
+      renderList(data || []);
+      setStatus(`Loaded ${data?.length ?? 0} customer(s).`, "ok");
+    }
+
+    function renderList(rows) {
+      if (!rows.length) {
+        listEl.innerHTML = `
+          <div class="rowItem" style="cursor: default;">
+            <div class="nameLine">
+              <div class="big">No customers found</div>
+              <div class="small">Try a different search, or add a new customer.</div>
+            </div>
+            <div class="chev"></div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = rows.map(r => {
+        const full = `${r[COL_NAME] ?? ""} ${r[COL_SURNAME] ?? ""}`.trim();
+        return `
+          <div class="rowItem" data-id="${escapeHtml(r[COL_ID])}">
+            <div class="nameLine">
+              <div class="big">${escapeHtml(full || "(no name)")}</div>
+              <div class="small">Tap to open</div>
+            </div>
+            <div class="chev">›</div>
+          </div>
+        `;
+      }).join("");
+
+      // Click handlers
+      listEl.querySelectorAll(".rowItem[data-id]").forEach(el => {
+        el.addEventListener("click", () => openCustomer(el.getAttribute("data-id")));
+      });
+    }
+
+    // ==========================
+    // DATA: DETAIL
+    // ==========================
+    async function openCustomer(id) {
+      setStatus("Loading customer…");
+      const { data, error } = await sb
+        .from(TABLE_NAME)
+        .select(`${COL_ID}, ${COL_NAME}, ${COL_SURNAME}, ${COL_PRICE}, ${COL_NOTES}`)
+        .eq(COL_ID, id)
+        .single();
+
+      if (error) {
+        setStatus("Error loading customer:\n" + error.message, "bad");
+        return;
+      }
+
+      current = data;
+      currentOriginal = clone(data);
+
+      fillDetail(current);
+      setView("detail");
+      setEditMode(false);
+      setStatus("Loaded.", "ok");
+    }
+
+    function fillDetail(c) {
+      const full = `${c[COL_NAME] ?? ""} ${c[COL_SURNAME] ?? ""}`.trim() || "(no name)";
+      detailName.textContent = full;
+      detailMeta.textContent = `ID: ${c[COL_ID]}`;
+
+      nameInput.value = c[COL_NAME] ?? "";
+      surnameInput.value = c[COL_SURNAME] ?? "";
+      priceInput.value = c[COL_PRICE] ?? "";
+      notesInput.value = c[COL_NOTES] ?? "";
+    }
+
+    async function updateNotesNow() {
+      if (!current) return;
+
+      const newNotes = notesInput.value ?? "";
+      if ((current[COL_NOTES] ?? "") === newNotes) return;
+
+      // Optimistic local update
+      current[COL_NOTES] = newNotes;
+      setStatus("Saving notes…");
+
+      const { error } = await sb
+        .from(TABLE_NAME)
+        .update({ [COL_NOTES]: newNotes })
+        .eq(COL_ID, current[COL_ID]);
+
+      if (error) {
+        setStatus("Failed to save notes:\n" + error.message, "bad");
+        return;
+      }
+      setStatus("Notes saved.", "ok");
+    }
+
+    const updateNotesDebounced = debounce(updateNotesNow, 450);
+
+    async function saveEdits() {
+      if (!current) return;
+
+      const payload = {
+        [COL_NAME]: nameInput.value ?? "",
+        [COL_SURNAME]: surnameInput.value ?? "",
+        [COL_PRICE]: priceInput.value ?? "",
+        [COL_NOTES]: notesInput.value ?? "",
+      };
+
+      setStatus("Saving…");
+      const { data, error } = await sb
+        .from(TABLE_NAME)
+        .update(payload)
+        .eq(COL_ID, current[COL_ID])
+        .select(`${COL_ID}, ${COL_NAME}, ${COL_SURNAME}, ${COL_PRICE}, ${COL_NOTES}`)
+        .single();
+
+      if (error) {
+        setStatus("Save failed:\n" + error.message, "bad");
+        return;
+      }
+
+      current = data;
+      currentOriginal = clone(data);
+      fillDetail(current);
+      setEditMode(false);
+      setStatus("Saved.", "ok");
+
+      // Refresh list to reflect changes
+      loadList(searchInput.value || "");
+    }
+
+    function cancelEdits() {
+      if (!currentOriginal) return;
+      current = clone(currentOriginal);
+      fillDetail(current);
+      setEditMode(false);
+      setStatus("Edits canceled.", "ok");
+    }
+
+    // ==========================
+    // DATA: ADD
+    // ==========================
+    async function addCustomer() {
+      const nm = (addName.value || "").trim();
+      const sn = (addSurname.value || "").trim();
+      const pr = (addPrice.value || "").trim();
+      const nt = (addNotes.value || "").trim();
+
+      if (!nm && !sn) {
+        setAddStatus("Please enter at least a name or a surname.", "bad");
+        return;
+      }
+
+      setAddStatus("Creating…");
+
+      const payload = {
+        [COL_NAME]: nm || null,
+        [COL_SURNAME]: sn || null,
+        [COL_PRICE]: pr || null,
+        [COL_NOTES]: nt || null,
+      };
+
+      const { data, error } = await sb
+        .from(TABLE_NAME)
+        .insert(payload)
+        .select(`${COL_ID}, ${COL_NAME}, ${COL_SURNAME}, ${COL_PRICE}, ${COL_NOTES}`)
+        .single();
+
+      if (error) {
+        setAddStatus("Create failed:\n" + error.message, "bad");
+        return;
+      }
+
+      setAddStatus("Created.", "ok");
+      addDialog.close();
+
+      // clear form
+      addName.value = "";
+      addSurname.value = "";
+      addPrice.value = "";
+      addNotes.value = "";
+      setAddStatus("");
+
+      // refresh list and open new record
+      await loadList(searchInput.value || "");
+      await openCustomer(data[COL_ID]);
+    }
+
+    // ==========================
+    // EVENTS
+    // ==========================
+    searchInput.addEventListener("input", debounce(() => {
+      loadList(searchInput.value || "");
+    }, 250));
+
+    addBtn.addEventListener("click", () => {
+      setAddStatus("");
+      addDialog.showModal();
+      addName.focus();
+    });
+
+    closeAddBtn.addEventListener("click", () => addDialog.close());
+    createBtn.addEventListener("click", addCustomer);
+
+    backBtn.addEventListener("click", () => {
+      setView("list");
+      loadList(searchInput.value || "");
+    });
+
+    editBtn.addEventListener("click", () => setEditMode(true));
+    saveBtn.addEventListener("click", saveEdits);
+    cancelBtn.addEventListener("click", cancelEdits);
+
+    // Notes: editable immediately, auto-save debounced
+    notesInput.addEventListener("input", () => updateNotesDebounced());
+    // Also save on blur for people who type then exit quickly
+    notesInput.addEventListener("blur", () => updateNotesNow());
+
+    // ==========================
+    // BOOT
+    // ==========================
+    (async function boot() {
+      // Basic config check
+      if (SUPABASE_URL.startsWith("PUT_") || SUPABASE_ANON_KEY.startsWith("PUT_")) {
+        setStatus(
+          "Configure SUPABASE_URL and SUPABASE_ANON_KEY in index.html.\n" +
+          "Also set TABLE_NAME to match your Supabase table name.",
+          "bad"
+        );
+        return;
+      }
+
+      setView("list");
+      await loadList("");
+    })();
+  </script>
+</body>
+</html>

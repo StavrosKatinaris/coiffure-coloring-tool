@@ -94,7 +94,7 @@
       gap:10px;
       align-items:center;
     }
-    input[type="search"], input[type="text"], input[type="number"]{
+    input[type="search"], input[type="text"], input[type="number"], input[type="password"]{
       width:100%;
       border:1px solid var(--border);
       background: rgba(255,255,255,0.03);
@@ -263,24 +263,87 @@
     @media (max-width: 520px){
       .grid2{ grid-template-columns: 1fr; }
     }
+
+    /* PIN Gate */
+    .gateWrap{
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .gateCard{
+      width: 100%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .gateHd{
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .gateHd .big{
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .gateHd .small{
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .gateBd{
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .pinInput{
+      text-align: center;
+      letter-spacing: 10px;
+      font-size: 20px;
+      font-family: var(--mono);
+      padding: 14px 12px;
+    }
   </style>
 
   <!-- Supabase JS via CDN (no bundler) -->
-  <!-- Docs: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
-  <!-- :contentReference[oaicite:2]{index=2} -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-  <div class="app">
+
+  <!-- PIN GATE -->
+  <section id="gate" class="gateWrap" style="display:none;">
+    <div class="gateCard">
+      <div class="gateHd">
+        <div class="big">Enter PIN</div>
+        <div class="small">Type your 4-digit code to unlock the app.</div>
+      </div>
+      <div class="gateBd">
+        <input id="pinInput" class="pinInput" type="password" inputmode="numeric" pattern="[0-9]*"
+               maxlength="4" placeholder="••••" autocomplete="one-time-code" />
+        <button class="primary" id="pinBtn">Unlock</button>
+        <div class="status" id="pinStatus"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div class="app" id="appRoot" style="display:none;">
     <header>
       <div class="topbar">
         <div>
-          <div class="title" id="pageTitle">Customers</div>
-          <div class="sub" id="pageSub">Contacts-style view</div>
+          <div class="title" id="pageTitle">Color Tool</div>
+          <div class="sub" id="pageSub">Customers</div>
         </div>
         <div class="actions" id="listActions">
           <button class="primary" id="addBtn">Add</button>
+          <button id="logoutBtn">Logout</button>
         </div>
         <div class="actions" id="detailActions" style="display:none;">
           <button id="backBtn">Go back</button>
@@ -373,11 +436,13 @@
 
   <script>
     // ==========================
-    // CONFIG (EDIT THESE)
+    // CONFIG
     // ==========================
+    // Keep YOUR current values here (already in your file). :contentReference[oaicite:1]{index=1}
     const SUPABASE_URL = "https://kbccjpoqzacnkafwlecn.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiY2NqcG9xemFjbmthZndsZWNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE3MDYsImV4cCI6MjA4NDk5NzcwNn0.m_rgwS10E_Mfsc22A1QZWU83H1B_mt-73R49b4XE4qI";
-    const TABLE_NAME = "customers"; // <-- put your exact table name
+
+    const TABLE_NAME = "customers";
 
     // Column names (must match your table)
     const COL_ID = "id";
@@ -385,6 +450,11 @@
     const COL_SURNAME = "surname";
     const COL_PRICE = "price";
     const COL_NOTES = "notes";
+
+    // PIN gate settings
+    // Recommended: use RPC function public.check_pin(p_pin text) -> boolean
+    const PIN_RPC_NAME = "check_pin";
+    const PIN_STORAGE_KEY = "pin_unlocked_v1"; // local device remember
 
     // ==========================
     // CLIENT
@@ -394,7 +464,7 @@
     // ==========================
     // STATE
     // ==========================
-    let current = null;       // current customer object
+    let current = null;
     let currentOriginal = null;
     let editMode = false;
 
@@ -403,6 +473,15 @@
     // ==========================
     const $ = (id) => document.getElementById(id);
 
+    // Gate
+    const gate = $("gate");
+    const appRoot = $("appRoot");
+    const pinInput = $("pinInput");
+    const pinBtn = $("pinBtn");
+    const pinStatus = $("pinStatus");
+    const logoutBtn = $("logoutBtn");
+
+    // App
     const statusEl = $("status");
     const hintEl = $("hint");
 
@@ -449,12 +528,14 @@
       statusEl.textContent = msg || "";
       statusEl.className = "status " + (kind || "");
     }
-
     function setAddStatus(msg, kind = "") {
       addStatus.textContent = msg || "";
       addStatus.className = "status " + (kind || "");
     }
-
+    function setPinStatus(msg, kind = "") {
+      pinStatus.textContent = msg || "";
+      pinStatus.className = "status " + (kind || "");
+    }
     function escapeHtml(s) {
       return String(s ?? "")
         .replaceAll("&", "&amp;")
@@ -463,11 +544,20 @@
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
     }
-
     function clone(obj) {
       return JSON.parse(JSON.stringify(obj));
     }
+    function debounce(fn, ms) {
+      let t = null;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
 
+    // ==========================
+    // VIEW
+    // ==========================
     function setView(mode) {
       if (mode === "list") {
         listView.style.display = "";
@@ -478,7 +568,7 @@
         hintEl.style.display = "";
 
         pageTitle.textContent = "Customers";
-        pageSub.textContent = "Contacts-style view";
+        pageSub.textContent = "Color Tool";
         setStatus("");
 
         current = null;
@@ -510,13 +600,64 @@
       cancelBtn.style.display = editMode ? "" : "none";
     }
 
-    // Debounce helper
-    function debounce(fn, ms) {
-      let t = null;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-      };
+    // ==========================
+    // PIN GATE
+    // ==========================
+    function showGate() {
+      gate.style.display = "";
+      appRoot.style.display = "none";
+      setPinStatus("");
+      pinInput.value = "";
+      setTimeout(() => pinInput.focus(), 50);
+    }
+
+    function showApp() {
+      gate.style.display = "none";
+      appRoot.style.display = "";
+    }
+
+    async function checkPin(pin) {
+      // Recommended: call RPC that returns boolean
+      const { data, error } = await sb.rpc(PIN_RPC_NAME, { p_pin: pin });
+      if (error) throw error;
+      return !!data;
+    }
+
+    async function tryUnlock() {
+      const pin = (pinInput.value || "").trim();
+
+      if (!/^\d{4}$/.test(pin)) {
+        setPinStatus("PIN must be exactly 4 digits.", "bad");
+        return;
+      }
+
+      setPinStatus("Checking…");
+      pinBtn.disabled = true;
+
+      try {
+        const ok = await checkPin(pin);
+        if (!ok) {
+          setPinStatus("Wrong PIN.", "bad");
+          pinBtn.disabled = false;
+          return;
+        }
+
+        localStorage.setItem(PIN_STORAGE_KEY, "1");
+        setPinStatus("Unlocked.", "ok");
+
+        showApp();
+        setView("list");
+        await loadList("");
+      } catch (e) {
+        setPinStatus("PIN check failed:\n" + (e?.message || String(e)), "bad");
+      } finally {
+        pinBtn.disabled = false;
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem(PIN_STORAGE_KEY);
+      showGate();
     }
 
     // ==========================
@@ -533,9 +674,7 @@
 
       const term = query.trim();
       if (term) {
-        // OR filter: name ILIKE or surname ILIKE
-        // PostgREST 'or' syntax
-        const safe = term.replaceAll(",", " "); // avoid breaking 'or' string
+        const safe = term.replaceAll(",", " ");
         q = q.or(`${COL_NAME}.ilike.%${safe}%,${COL_SURNAME}.ilike.%${safe}%`);
       }
 
@@ -578,7 +717,6 @@
         `;
       }).join("");
 
-      // Click handlers
       listEl.querySelectorAll(".rowItem[data-id]").forEach(el => {
         el.addEventListener("click", () => openCustomer(el.getAttribute("data-id")));
       });
@@ -626,7 +764,6 @@
       const newNotes = notesInput.value ?? "";
       if ((current[COL_NOTES] ?? "") === newNotes) return;
 
-      // Optimistic local update
       current[COL_NOTES] = newNotes;
       setStatus("Saving notes…");
 
@@ -673,7 +810,6 @@
       setEditMode(false);
       setStatus("Saved.", "ok");
 
-      // Refresh list to reflect changes
       loadList(searchInput.value || "");
     }
 
@@ -722,14 +858,12 @@
       setAddStatus("Created.", "ok");
       addDialog.close();
 
-      // clear form
       addName.value = "";
       addSurname.value = "";
       addPrice.value = "";
       addNotes.value = "";
       setAddStatus("");
 
-      // refresh list and open new record
       await loadList(searchInput.value || "");
       await openCustomer(data[COL_ID]);
     }
@@ -737,6 +871,13 @@
     // ==========================
     // EVENTS
     // ==========================
+    pinBtn.addEventListener("click", tryUnlock);
+    pinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") tryUnlock();
+    });
+
+    logoutBtn.addEventListener("click", logout);
+
     searchInput.addEventListener("input", debounce(() => {
       loadList(searchInput.value || "");
     }, 250));
@@ -759,25 +900,29 @@
     saveBtn.addEventListener("click", saveEdits);
     cancelBtn.addEventListener("click", cancelEdits);
 
-    // Notes: editable immediately, auto-save debounced
     notesInput.addEventListener("input", () => updateNotesDebounced());
-    // Also save on blur for people who type then exit quickly
     notesInput.addEventListener("blur", () => updateNotesNow());
 
     // ==========================
     // BOOT
     // ==========================
     (async function boot() {
-      // Basic config check
-      if (SUPABASE_URL.startsWith("PUT_") || SUPABASE_ANON_KEY.startsWith("PUT_")) {
-        setStatus(
-          "Configure SUPABASE_URL and SUPABASE_ANON_KEY in index.html.\n" +
-          "Also set TABLE_NAME to match your Supabase table name.",
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.startsWith("PASTE_")) {
+        showGate();
+        setPinStatus(
+          "Configure SUPABASE_URL and SUPABASE_ANON_KEY in index.html.",
           "bad"
         );
         return;
       }
 
+      const unlocked = localStorage.getItem(PIN_STORAGE_KEY) === "1";
+      if (!unlocked) {
+        showGate();
+        return;
+      }
+
+      showApp();
       setView("list");
       await loadList("");
     })();

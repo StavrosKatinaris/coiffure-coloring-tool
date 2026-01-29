@@ -175,6 +175,7 @@ input, textarea{
   background: rgba(0,0,0,0.18);
   color: var(--text);
   outline: none;
+  font-size: 18px; /* IMPORTANT: stops auto-zoom */
 }
 
 input:focus, textarea:focus{

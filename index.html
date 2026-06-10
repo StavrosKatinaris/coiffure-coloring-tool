@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="el">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0b1020">
-  <title>Customers</title>
+  <title>Πελάτες</title>
 
   <link rel="icon" type="image/png" href="./lm.png">
   <link rel="apple-touch-icon" href="./lm.png">
@@ -20,13 +20,13 @@
   <section id="gate" class="gateWrap" style="display:none;">
     <div class="gateCard">
       <div class="gateHd">
-        <div class="big">Enter PIN</div>
-        <div class="small">4-digit access code</div>
+        <div class="big">Εισαγωγή PIN</div>
+        <div class="small">4ψήφιος κωδικός πρόσβασης</div>
       </div>
 
       <div class="gateBd">
         <input id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" />
-        <button class="primary" id="pinBtn">Unlock</button>
+        <button class="primary" id="pinBtn">Ξεκλείδωμα</button>
         <div class="status" id="pinStatus"></div>
       </div>
     </div>
@@ -40,38 +40,38 @@
       <div class="left">
         <div>
           <div class="titleRow">
-            <div class="title" id="pageTitle">Customers</div>
+            <div class="title" id="pageTitle">Πελάτες</div>
 
             <!-- Today's customers toggle (shown only on list view via JS) -->
             <label class="chipToggle" id="todayWrap" style="display:none;">
               <input type="checkbox" id="todayToggle" />
-              <span>Today’s customers</span>
+              <span>Σημερινοί πελάτες</span>
             </label>
           </div>
 
-          <div class="sub" id="pageSub">Color Tool</div>
+          <div class="sub" id="pageSub">Εργαλείο Βαφών</div>
         </div>
       </div>
 
       <div class="right">
-        <button class="ghost" id="logoutBtn">Logout</button>
+        <button class="ghost" id="logoutBtn">Αποσύνδεση</button>
       </div>
     </div>
 
     <!-- STATUS BAR -->
     <div class="statusRow">
       <div class="status" id="status"></div>
-      <div class="hint" id="hint">Tip: Notes auto-save.</div>
+      <div class="hint" id="hint">Συμβουλή: Οι σημειώσεις αποθηκεύονται αυτόματα.</div>
     </div>
 
     <!-- LIST VIEW -->
     <section id="listView">
       <div class="searchRow" id="searchRow">
-        <input id="searchInput" placeholder="Search by name or surname…" />
+        <input id="searchInput" placeholder="Αναζήτηση με όνομα ή επώνυμο..." />
       </div>
 
       <div class="listActions" id="listActions">
-        <button class="primary" id="addBtn">Add Customer</button>
+        <button class="primary" id="addBtn">Προσθήκη πελάτη</button>
       </div>
 
       <div class="list" id="list"></div>
@@ -80,58 +80,58 @@
     <!-- DETAIL VIEW -->
     <section id="detailView" style="display:none;">
       <div class="detailHd">
-        <button class="ghost" id="backBtn">← Back</button>
+        <button class="ghost" id="backBtn">← Πίσω</button>
         <div class="detailTitle">
-          <div class="big" id="detailName">Customer</div>
+          <div class="big" id="detailName">Πελάτης</div>
           <div class="small" id="detailMeta">ID: —</div>
         </div>
       </div>
 
       <div class="form">
-        <label>Name</label>
+        <label>Όνομα</label>
         <input id="nameInput" />
 
-        <label>Surname</label>
+        <label>Επώνυμο</label>
         <input id="surnameInput" />
 
-        <label>Price</label>
+        <label>Τιμή</label>
         <input id="priceInput" />
 
-        <label>Notes</label>
+        <label>Σημειώσεις</label>
         <textarea id="notesInput" rows="6"></textarea>
       </div>
 
       <div class="detailActions" id="detailActions">
-        <button class="primary" id="dailyBtn">Add to daily schedule</button>
-        <button class="ghost" id="editBtn">Edit</button>
-        <button class="primary" id="saveBtn" style="display:none;">Save</button>
-        <button class="ghost" id="cancelBtn" style="display:none;">Cancel</button>
+        <button class="primary" id="dailyBtn">Προσθήκη στο σημερινό πρόγραμμα</button>
+        <button class="ghost" id="editBtn">Επεξεργασία</button>
+        <button class="primary" id="saveBtn" style="display:none;">Αποθήκευση</button>
+        <button class="ghost" id="cancelBtn" style="display:none;">Ακύρωση</button>
       </div>
     </section>
 
     <!-- ADD DIALOG -->
     <dialog id="addDialog">
       <div class="dialogHd">
-        <div class="big">Add Customer</div>
+        <div class="big">Προσθήκη πελάτη</div>
         <button class="ghost" id="closeAddBtn">✕</button>
       </div>
 
       <div class="form">
-        <label>Name</label>
+        <label>Όνομα</label>
         <input id="addName" />
 
-        <label>Surname</label>
+        <label>Επώνυμο</label>
         <input id="addSurname" />
 
-        <label>Price</label>
+        <label>Τιμή</label>
         <input id="addPrice" />
 
-        <label>Notes</label>
+        <label>Σημειώσεις</label>
         <textarea id="addNotes" rows="5"></textarea>
       </div>
 
       <div class="dialogFt">
-        <button class="primary" id="createBtn">Create</button>
+        <button class="primary" id="createBtn">Δημιουργία</button>
         <div class="status" id="addStatus"></div>
       </div>
     </dialog>

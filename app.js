@@ -5,6 +5,7 @@
 const SUPABASE_URL = "https://kbccjpoqzacnkafwlecn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiY2NqcG9xemFjbmthZndsZWNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE3MDYsImV4cCI6MjA4NDk5NzcwNn0.m_rgwS10E_Mfsc22A1QZWU83H1B_mt-73R49b4XE4qI";
 
+
 const TABLE_NAME = "customers";
 const DAILY_TABLE = "daily_list";
 
@@ -34,11 +35,17 @@ let editMode = false;
 // ==========================
 const $ = (id) => document.getElementById(id);
 
+// Remember who is "logged in" via PIN
 let currentPin = null;
+
+// Track whether current customer is in daily_list
 let currentInDaily = false;
 
+// Detail button
 const dailyBtn = $("dailyBtn");
 
+
+// Gate
 const gate = $("gate");
 const appRoot = $("appRoot");
 const pinInput = $("pinInput");
@@ -46,6 +53,7 @@ const pinBtn = $("pinBtn");
 const pinStatus = $("pinStatus");
 const logoutBtn = $("logoutBtn");
 
+// App
 const statusEl = $("status");
 const hintEl = $("hint");
 
@@ -62,6 +70,7 @@ const detailActions = $("detailActions");
 const pageTitle = $("pageTitle");
 const pageSub = $("pageSub");
 
+// Today toggle
 const todayWrap = $("todayWrap");
 const todayToggle = $("todayToggle");
 
@@ -88,7 +97,7 @@ const editBtn = $("editBtn");
 const saveBtn = $("saveBtn");
 const cancelBtn = $("cancelBtn");
 
-const PIN_VALUE_STORAGE_KEY = "pin_value_v1";
+const PIN_VALUE_STORAGE_KEY = "pin_value_v1"; // optional
 
 // ==========================
 // UTIL
@@ -97,17 +106,14 @@ function setStatus(msg, kind = "") {
   statusEl.textContent = msg || "";
   statusEl.className = "status " + (kind || "");
 }
-
 function setAddStatus(msg, kind = "") {
   addStatus.textContent = msg || "";
   addStatus.className = "status " + (kind || "");
 }
-
 function setPinStatus(msg, kind = "") {
   pinStatus.textContent = msg || "";
   pinStatus.className = "status " + (kind || "");
 }
-
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -116,11 +122,9 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
-
 function debounce(fn, ms) {
   let t = null;
   return (...args) => {
@@ -155,7 +159,7 @@ async function fetchDailyListMap() {
 }
 
 async function loadTodayOnly() {
-  setStatus("Φόρτωση σημερινών πελατών...");
+  setStatus("Loading today…");
 
   const { data: daily, error: e1 } = await sb
     .from(DAILY_TABLE)
@@ -163,14 +167,14 @@ async function loadTodayOnly() {
     .order("date_added", { ascending: false });
 
   if (e1) {
-    setStatus("Σφάλμα φόρτωσης ημερήσιου προγράμματος:\n" + e1.message, "bad");
+    setStatus("Error loading daily_list:\n" + e1.message, "bad");
     renderList([]);
     return;
   }
 
   const ids = (daily || []).map(r => r.customer_id);
   if (!ids.length) {
-    setStatus("Το σημερινό πρόγραμμα είναι άδειο.", "ok");
+    setStatus("Today list is empty.", "ok");
     renderList([]);
     return;
   }
@@ -181,19 +185,21 @@ async function loadTodayOnly() {
     .in(COL_ID, ids);
 
   if (e2) {
-    setStatus("Σφάλμα φόρτωσης σημερινών πελατών:\n" + e2.message, "bad");
+    setStatus("Error loading today customers:\n" + e2.message, "bad");
     renderList([]);
     return;
   }
 
+  // Keep same order as daily_list (most recent first)
   const rank = new Map(ids.map((id, i) => [String(id), i]));
   const rows = (customers || []).slice().sort((a, b) =>
     (rank.get(String(a[COL_ID])) ?? 999999) - (rank.get(String(b[COL_ID])) ?? 999999)
   );
 
-  setStatus(`Φορτώθηκαν ${rows.length} πελάτες. (Μόνο σήμερα)`, "ok");
+  setStatus(`Loaded ${rows.length} customer(s). (Today only)`, "ok");
   renderList(rows);
 }
+
 
 // ==========================
 // VIEW
@@ -210,8 +216,8 @@ function setView(mode) {
     if (todayWrap) todayWrap.style.display = "";
     syncTodayToggleUI();
 
-    pageTitle.textContent = "Πελάτες";
-    pageSub.textContent = "Εργαλείο Βαφών";
+    pageTitle.textContent = "Customers";
+    pageSub.textContent = "Color Tool";
     setStatus("");
 
     current = null;
@@ -227,8 +233,8 @@ function setView(mode) {
 
     if (todayWrap) todayWrap.style.display = "none";
 
-    pageTitle.textContent = "Πελάτης";
-    pageSub.textContent = "Οι σημειώσεις επεξεργάζονται άμεσα";
+    pageTitle.textContent = "Customer";
+    pageSub.textContent = "Notes are editable immediately";
   }
 }
 
@@ -269,49 +275,49 @@ async function tryUnlock() {
   const pin = (pinInput.value || "").trim();
 
   if (!/^\d{4}$/.test(pin)) {
-    setPinStatus("Το PIN πρέπει να αποτελείται από ακριβώς 4 ψηφία.", "bad");
+    setPinStatus("PIN must be exactly 4 digits.", "bad");
     return;
   }
 
-  setPinStatus("Έλεγχος...");
+  setPinStatus("Checking…");
   pinBtn.disabled = true;
 
   try {
     const ok = await checkPin(pin);
     if (!ok) {
-      setPinStatus("Λάθος PIN.", "bad");
+      setPinStatus("Wrong PIN.", "bad");
       pinBtn.disabled = false;
       return;
     }
 
     localStorage.setItem(PIN_STORAGE_KEY, "1");
-    setPinStatus("Επιτυχής είσοδος.", "ok");
+    setPinStatus("Unlocked.", "ok");
 
     showApp();
     setView("list");
     await loadList("");
   } catch (e) {
-    setPinStatus("Αποτυχία ελέγχου PIN:\n" + (e?.message || String(e)), "bad");
+    setPinStatus("PIN check failed:\n" + (e?.message || String(e)), "bad");
   } finally {
     pinBtn.disabled = false;
   }
-
+  
   currentPin = pin;
-  localStorage.setItem(PIN_VALUE_STORAGE_KEY, pin);
+  localStorage.setItem(PIN_VALUE_STORAGE_KEY, pin); // optional
 }
 
 function logout() {
   localStorage.removeItem(PIN_STORAGE_KEY);
   showGate();
   currentPin = null;
-  localStorage.removeItem(PIN_VALUE_STORAGE_KEY);
+  localStorage.removeItem(PIN_VALUE_STORAGE_KEY); // optional
 }
 
 // ==========================
 // DATA: LIST
 // ==========================
 async function loadList(query = "") {
-  setStatus("Φόρτωση...");
+  setStatus("Loading…");
 
   if (todayToggle?.checked) {
     await loadTodayOnly();
@@ -334,13 +340,14 @@ async function loadList(query = "") {
   const { data, error } = await q;
 
   if (error) {
-    setStatus("Σφάλμα φόρτωσης λίστας:\n" + error.message, "bad");
+    setStatus("Error loading list:\n" + error.message, "bad");
     listEl.innerHTML = "";
     return;
   }
 
   let rows = data || [];
 
+  // FILTER behavior
   if (todayToggle && todayToggle.checked) {
     try {
       const dailyMap = await fetchDailyListMap();
@@ -349,15 +356,15 @@ async function loadList(query = "") {
         (dailyMap.get(String(b[COL_ID])) || 0) -
         (dailyMap.get(String(a[COL_ID])) || 0)
       );
-      setStatus(`Φορτώθηκαν ${rows.length} πελάτες. (Μόνο σήμερα)`, "ok");
+      setStatus(`Loaded ${rows.length} customer(s). (Today only)`, "ok");
     } catch (e) {
       setStatus(
-        `Φορτώθηκαν ${rows.length} πελάτες. (Αποτυχία φίλτρου σημερινών πελατών: ${e?.message || String(e)})`,
+        `Loaded ${rows.length} customer(s). (Today filter failed: ${e?.message || String(e)})`,
         "bad"
       );
     }
   } else {
-    setStatus(`Φορτώθηκαν ${rows.length} πελάτες.`, "ok");
+    setStatus(`Loaded ${rows.length} customer(s).`, "ok");
   }
 
   renderList(rows);
@@ -368,8 +375,8 @@ function renderList(rows) {
     listEl.innerHTML = `
       <div class="rowItem" style="cursor: default;">
         <div class="nameLine">
-          <div class="big">Δεν βρέθηκαν πελάτες</div>
-          <div class="small">Δοκιμάστε διαφορετική αναζήτηση ή προσθέστε νέο πελάτη.</div>
+          <div class="big">No customers found</div>
+          <div class="small">Try a different search, or add a new customer.</div>
         </div>
         <div class="chev"></div>
       </div>
@@ -382,8 +389,8 @@ function renderList(rows) {
     return `
       <div class="rowItem" data-id="${escapeHtml(r[COL_ID])}">
         <div class="nameLine">
-          <div class="big">${escapeHtml(full || "(χωρίς όνομα)")}</div>
-          <div class="small">Πατήστε για άνοιγμα</div>
+          <div class="big">${escapeHtml(full || "(no name)")}</div>
+          <div class="small">Tap to open</div>
         </div>
         <div class="chev">›</div>
       </div>
@@ -399,8 +406,7 @@ function renderList(rows) {
 // DATA: DETAIL
 // ==========================
 async function openCustomer(id) {
-  setStatus("Φόρτωση πελάτη...");
-
+  setStatus("Loading customer…");
   const { data, error } = await sb
     .from(TABLE_NAME)
     .select(`${COL_ID}, ${COL_NAME}, ${COL_SURNAME}, ${COL_PRICE}, ${COL_NOTES}`)
@@ -408,7 +414,7 @@ async function openCustomer(id) {
     .single();
 
   if (error) {
-    setStatus("Σφάλμα φόρτωσης πελάτη:\n" + error.message, "bad");
+    setStatus("Error loading customer:\n" + error.message, "bad");
     return;
   }
 
@@ -417,20 +423,18 @@ async function openCustomer(id) {
 
   fillDetail(current);
   setView("detail");
-
   try {
     await refreshDailyStateForCurrentCustomer();
   } catch (e) {
-    setStatus("Αδυναμία ανάγνωσης κατάστασης ημερήσιου προγράμματος:\n" + (e?.message || String(e)), "bad");
+    setStatus("Could not read daily schedule state:\n" + (e?.message || String(e)), "bad");
     setDailyBtnState(false);
   }
-
   setEditMode(false);
-  setStatus("Η φόρτωση ολοκληρώθηκε.", "ok");
+  setStatus("Loaded.", "ok");
 }
 
 function fillDetail(c) {
-  const full = `${c[COL_NAME] ?? ""} ${c[COL_SURNAME] ?? ""}`.trim() || "(χωρίς όνομα)";
+  const full = `${c[COL_NAME] ?? ""} ${c[COL_SURNAME] ?? ""}`.trim() || "(no name)";
   detailName.textContent = full;
   detailMeta.textContent = `ID: ${c[COL_ID]}`;
 
@@ -447,7 +451,7 @@ async function updateNotesNow() {
   if ((current[COL_NOTES] ?? "") === newNotes) return;
 
   current[COL_NOTES] = newNotes;
-  setStatus("Αποθήκευση σημειώσεων...");
+  setStatus("Saving notes…");
 
   const { error } = await sb
     .from(TABLE_NAME)
@@ -455,11 +459,10 @@ async function updateNotesNow() {
     .eq(COL_ID, current[COL_ID]);
 
   if (error) {
-    setStatus("Αποτυχία αποθήκευσης σημειώσεων:\n" + error.message, "bad");
+    setStatus("Failed to save notes:\n" + error.message, "bad");
     return;
   }
-
-  setStatus("Οι σημειώσεις αποθηκεύτηκαν.", "ok");
+  setStatus("Notes saved.", "ok");
 }
 
 const updateNotesDebounced = debounce(updateNotesNow, 450);
@@ -474,8 +477,7 @@ async function saveEdits() {
     [COL_NOTES]: notesInput.value ?? "",
   };
 
-  setStatus("Αποθήκευση...");
-
+  setStatus("Saving…");
   const { data, error } = await sb
     .from(TABLE_NAME)
     .update(payload)
@@ -484,7 +486,7 @@ async function saveEdits() {
     .single();
 
   if (error) {
-    setStatus("Αποτυχία αποθήκευσης:\n" + error.message, "bad");
+    setStatus("Save failed:\n" + error.message, "bad");
     return;
   }
 
@@ -492,18 +494,17 @@ async function saveEdits() {
   currentOriginal = clone(data);
   fillDetail(current);
   setEditMode(false);
-  setStatus("Η αποθήκευση ολοκληρώθηκε.", "ok");
+  setStatus("Saved.", "ok");
 
   loadList(searchInput.value || "");
 }
 
 function cancelEdits() {
   if (!currentOriginal) return;
-
   current = clone(currentOriginal);
   fillDetail(current);
   setEditMode(false);
-  setStatus("Οι αλλαγές ακυρώθηκαν.", "ok");
+  setStatus("Edits canceled.", "ok");
 }
 
 function setDailyBtnState(inDaily) {
@@ -538,8 +539,10 @@ async function refreshDailyStateForCurrentCustomer() {
 function syncAddButtonVisibility() {
   if (!addBtn) return;
 
+  // Hide "Add Customer" when Today toggle is ON
   addBtn.style.display = todayToggle?.checked ? "none" : "";
 }
+
 
 // ==========================
 // DATA: ADD
@@ -551,11 +554,11 @@ async function addCustomer() {
   const nt = (addNotes.value || "").trim();
 
   if (!nm && !sn) {
-    setAddStatus("Παρακαλώ συμπληρώστε τουλάχιστον όνομα ή επώνυμο.", "bad");
+    setAddStatus("Please enter at least a name or a surname.", "bad");
     return;
   }
 
-  setAddStatus("Δημιουργία...");
+  setAddStatus("Creating…");
 
   const payload = {
     [COL_NAME]: nm || null,
@@ -571,11 +574,11 @@ async function addCustomer() {
     .single();
 
   if (error) {
-    setAddStatus("Αποτυχία δημιουργίας:\n" + error.message, "bad");
+    setAddStatus("Create failed:\n" + error.message, "bad");
     return;
   }
 
-  setAddStatus("Ο πελάτης δημιουργήθηκε.", "ok");
+  setAddStatus("Created.", "ok");
   addDialog.close();
 
   addName.value = "";
@@ -592,7 +595,6 @@ async function addCustomer() {
 // EVENTS
 // ==========================
 pinBtn.addEventListener("click", tryUnlock);
-
 pinInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") tryUnlock();
 });
@@ -627,13 +629,12 @@ cancelBtn.addEventListener("click", cancelEdits);
 notesInput.addEventListener("input", () => updateNotesDebounced());
 notesInput.addEventListener("blur", () => updateNotesNow());
 
+// Toggle listener
 if (todayToggle) {
   todayToggle.addEventListener("change", () => {
     syncTodayToggleUI();
     syncAddButtonVisibility();
-
     if (todayToggle.checked) searchInput.value = "";
-
     loadList(searchInput.value || "");
   });
 }
@@ -642,8 +643,9 @@ if (dailyBtn) {
   dailyBtn.addEventListener("click", async () => {
     if (!current) return;
 
+    // If you didn't persist the pin and it's missing, block
     if (!currentPin) {
-      setStatus("Δεν υπάρχει PIN στην τρέχουσα συνεδρία. Παρακαλώ συνδεθείτε ξανά.", "bad");
+      setStatus("No PIN is set in this session. Please log in again.", "bad");
       return;
     }
 
@@ -651,13 +653,14 @@ if (dailyBtn) {
 
     try {
       if (!currentInDaily) {
+        // ADD
         const { error } = await sb
           .from(DAILY_TABLE)
           .upsert(
             {
               customer_id: current[COL_ID],
               added_by: currentPin,
-              date_added: new Date().toISOString(),
+              date_added: new Date().toISOString(), // keeps it fresh even if re-added
             },
             { onConflict: "customer_id" }
           );
@@ -667,6 +670,7 @@ if (dailyBtn) {
         setDailyBtnState(true);
         setStatus("Προστέθηκε στο σημερινό πρόγραμμα.", "ok");
       } else {
+        // REMOVE
         const { error } = await sb
           .from(DAILY_TABLE)
           .delete()
@@ -678,16 +682,18 @@ if (dailyBtn) {
         setStatus("Αφαιρέθηκε από το σημερινό πρόγραμμα.", "ok");
       }
 
+      // If “Today’s customers” toggle is ON, refresh list so it reflects changes
       if (todayToggle?.checked) {
         await loadList(searchInput.value || "");
       }
     } catch (e) {
-      setStatus("Αποτυχία ενημέρωσης ημερήσιου προγράμματος:\n" + (e?.message || String(e)), "bad");
+      setStatus("Daily schedule update failed:\n" + (e?.message || String(e)), "bad");
     } finally {
       dailyBtn.disabled = false;
     }
   });
 }
+
 
 // ==========================
 // BOOT
@@ -695,12 +701,11 @@ if (dailyBtn) {
 (async function boot() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.startsWith("PASTE_")) {
     showGate();
-    setPinStatus("Ρυθμίστε τα SUPABASE_URL και SUPABASE_ANON_KEY στο app.js.", "bad");
+    setPinStatus("Configure SUPABASE_URL and SUPABASE_ANON_KEY in app.js.", "bad");
     return;
   }
 
   const unlocked = localStorage.getItem(PIN_STORAGE_KEY) === "1";
-
   if (!unlocked) {
     showGate();
     return;

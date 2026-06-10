@@ -3,7 +3,7 @@
 // ==========================
 // Keep YOUR current values here (already in your file).
 const SUPABASE_URL = "https://kbccjpoqzacnkafwlecn.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrYmNjanBvcXphY25rYWZ3bGVjbiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzY5NDIxNzA2LCJleHAiOjIwODQ5OTc3MDZ9.m_rgwS10E_Mfsc22A1QZWU83H1B_mt-73R49b4XE4qI";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiY2NqcG9xemFjbmthZndsZWNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MjE3MDYsImV4cCI6MjA4NDk5NzcwNn0.m_rgwS10E_Mfsc22A1QZWU83H1B_mt-73R49b4XE4qI";
 
 const TABLE_NAME = "customers";
 const DAILY_TABLE = "daily_list";
